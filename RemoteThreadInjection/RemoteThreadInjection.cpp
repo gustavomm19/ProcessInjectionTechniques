@@ -46,7 +46,7 @@ unsigned char shellcode[] = {
 int main()
 {
     
-    // - SECTION 1: Start process
+    // - SECTION 1: Start the victim process
     printf("%s To start, we will open Notepad\n", k);
     system("pause");
     STARTUPINFO si = { sizeof(si) };

