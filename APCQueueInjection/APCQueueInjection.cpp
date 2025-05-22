@@ -6,7 +6,6 @@
 #include <thread>
 
 const char* k = "[+]";
-const char* i = "[*]";
 const char* e = "[-]";
 
 unsigned char shellcode[] = {
