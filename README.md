@@ -10,7 +10,7 @@ El objetivo principal de este proyecto es:
 - **Aprender y enseñar** sobre Inyección de procesos.  
 - Ilustrar los principios básicos sobre la inyección de procesos.
 
-Este proyecto proporciona las pruebas de concepto utilizadas en el Trabajo de fin de máster: [Diseño de prácticas de laboratorio para el análisis de técnicas modernas de inyección de procesos en malware](https://www.overleaf.com/project/677a7079f0927068bbc9218b).
+Este proyecto proporciona las pruebas de concepto utilizadas en el Trabajo de fin de máster: [Diseño de prácticas de laboratorio para el análisis de técnicas modernas de inyección de procesos en malware](https://www.overleaf.com/read/rrpsrnghzmrr#3d647e).
 
 ## Contenido
 Cada carpeta de este proyecto contiene una técnica de inyección distinta, en cada una de ellas encontrarás:
